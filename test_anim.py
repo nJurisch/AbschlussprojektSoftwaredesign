@@ -7,8 +7,6 @@ import streamlit.components.v1 as components
 from scipy.optimize import fsolve
 from scipy.optimize import least_squares
 
-data_strandbeest = []
-
 class Joint:
     def __init__(self, x, y, fixed=False):
         self.pos = np.array([x, y], dtype=float)
@@ -49,15 +47,26 @@ class Mechanism:
         return link
     
     def from_data(self, data):
-        # Fügt alle Gelenke hinzu
-        for joint_data in data["joints"]:
-            self.add_joint(joint_data["x"], joint_data["y"], joint_data["fixed"])
+        print("Erhalte Mechanismus-Daten:", data)
 
-        # Fügt alle Verbindungen hinzu
+        self.joints = []  # Stelle sicher, dass die Liste leer beginnt
+        joint_map = {}  # Speichert Joint-Objekte mit ihrem Index
+
+        for i, joint_data in enumerate(data["joints"]):
+            joint = self.add_joint(joint_data["x"], joint_data["y"], joint_data["fixed"])
+            joint_map[i] = joint  # Speichert das Gelenk mit seinem ursprünglichen Index
+
+        print("Joints nach from_data:", self.joints)
+
+        self.links = []
         for link_data in data["links"]:
-            joint1 = self.joints[link_data[0]]
-            joint2 = self.joints[link_data[1]]
-            self.add_link(joint1, joint2)
+            if link_data[0] not in joint_map or link_data[1] not in joint_map:
+                print(f"Fehler: Gelenk {link_data} existiert nicht!")  
+                continue
+            self.add_link(joint_map[link_data[0]], joint_map[link_data[1]])
+
+        print("Links nach from_data:", self.links)
+
 
     def solve_positions(self):
         """ Berechnet die Positionen der beweglichen Gelenke mit least_squares() """
@@ -141,7 +150,7 @@ class Mechanism:
         self.line, = ax.plot([], [], 'k-', lw=2)  # Mechanismus-Linien
         self.trace_line, = ax.plot([], [], 'r-', lw=1)  #Bahnkurve in Rot
 
-        ani = animation.FuncAnimation(fig, self.update, frames=360, interval=20, blit=True)
+        ani = animation.FuncAnimation(fig, self.update, frames=360, interval=20, blit=False)
         return ani
 
 
@@ -157,13 +166,22 @@ data_strandbeest = {
         {"x": -4.9, "y": -24.0, "fixed": False}
     ],
     "links": [
-        [0, 1], [1, 3], [1, 6], [2, 4], [2, 3], [2, 6], [3, 4],
-        [4, 5], [4, 6], [4, 7], [6, 7], [5, 6]
+         [0, 1], [1, 3], [1, 6], [2, 4], [2, 3], [2, 6], [3, 4],
+        [4, 5], [5, 6], [5, 7], [6, 7]
     ]
 }
 
 mechanism_fd = Mechanism(crank_speed=0.05)
-mechanism_fd.from_data(data_strandbeest)
+
+for joint in data_strandbeest["joints"]:
+    mechanism_fd.add_joint(joint["x"], joint["y"], joint["fixed"])
+
+for link in data_strandbeest["links"]:
+    # Hole die Joint-Objekte anhand der Indizes der Links und füge sie hinzu
+    joint1 = mechanism_fd.joints[link[0]]
+    joint2 = mechanism_fd.joints[link[1]]
+    mechanism_fd.add_link(joint1, joint2)
+
 # Mechanismus erstellen
 mechanism = Mechanism(crank_speed=0.05)
 
@@ -179,21 +197,14 @@ H = mechanism.add_joint(-4.9, -24)  # Bewegliches Gelenk
 mechanism.add_link(A, B)
 mechanism.add_link(B, D)
 mechanism.add_link(B, G)
-mechanism.add_link(C, D)
 mechanism.add_link(C, E)
+mechanism.add_link(C, D)
 mechanism.add_link(C, G)
 mechanism.add_link(D, E)
 mechanism.add_link(F, E)
 mechanism.add_link(F, G)
 mechanism.add_link(F, H)
 mechanism.add_link(H, G)
-
-mechanism.solve_positions()
-mechanism_fd.solve_positions()
-
-mechanism_ani = mechanism.animate()
-mech_ani_fd1= mechanism_fd.animate()
-
-
-st.title("Embed Matplotlib animation in Streamlit")
-components.html(mechanism_ani.to_jshtml(), height=1000)
+print()
+print(mechanism_fd.links)
+print(mechanism.links)

@@ -122,15 +122,16 @@ H = mechanism.add_joint(-4.9, -24)  # Bewegliches Gelenk
 
 mechanism.add_link(A, B)
 mechanism.add_link(B, D)
-mechanism.add_link(D, C)
-mechanism.add_link(F, E)
-mechanism.add_link(D, E)
-mechanism.add_link(C, G)
+mechanism.add_link(B, G)
 mechanism.add_link(C, E)
+mechanism.add_link(C, D)
+mechanism.add_link(C, G)
+mechanism.add_link(D, E)
+mechanism.add_link(F, E)
 mechanism.add_link(F, G)
 mechanism.add_link(F, H)
 mechanism.add_link(H, G)
-mechanism.add_link(B, G)
+
 
 mechanism.solve_positions()  # Wichtig, um die Startpositionen zu berechnen
 
