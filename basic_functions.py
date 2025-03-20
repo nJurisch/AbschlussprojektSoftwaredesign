@@ -4,7 +4,7 @@ from scipy.optimize import minimize
 class Mechanism:
     def __init__(self, joints, links):
         self.joints = joints  # Liste von Punkten [(x,y)]
-        self.links = links  # Liste von Verbindungen [(i, j)]
+        self.links = {tuple(link): np.linalg.norm(np.array(self.joints[link[0]]) - np.array(self.joints[link[1]])) for link in links}  # Dictionary für Verbindungen mit Längen
         self.angle = 0  # Startwinkel
     
     def update_mechanism(self, theta):
@@ -23,9 +23,8 @@ class Mechanism:
     def compute_length_error(self, positions):
         """Berechnet die Fehler der Längen der Glieder."""
         errors = []
-        for i, j in self.links:
+        for (i, j), expected_length in self.links.items():
             actual_length = np.linalg.norm(positions[i] - positions[j])
-            expected_length = np.linalg.norm(self.joints[i] - self.joints[j])
             errors.append((actual_length - expected_length) ** 2)
         return sum(errors)
     
@@ -34,9 +33,20 @@ class Mechanism:
         res = minimize(lambda theta: self.compute_length_error(self.update_mechanism(theta)), self.angle)
         return res.x
     
-    def add_link(self, joint1, joint2):
+    def add_link(self, joint1, joint2, length=None):
         """Fügt ein neues Glied zwischen zwei bestehenden Gelenken hinzu."""
         if (joint1, joint2) not in self.links and (joint2, joint1) not in self.links:
-            self.links.append((joint1, joint2))
+            if length is None:
+                length = np.linalg.norm(np.array(self.joints[joint1]) - np.array(self.joints[joint2]))
+            self.links[(joint1, joint2)] = length
         else:
-            print("Diese Verbindung existiert bereits.")    
+            print("Diese Verbindung existiert bereits.")
+    
+    def update_link_length(self, joint1, joint2, new_length):
+        """Aktualisiert die Länge einer bestehenden Verbindung."""
+        if (joint1, joint2) in self.links:
+            self.links[(joint1, joint2)] = new_length
+        elif (joint2, joint1) in self.links:
+            self.links[(joint2, joint1)] = new_length
+        else:
+            print("Diese Verbindung existiert nicht.")   
